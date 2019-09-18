@@ -1,5 +1,18 @@
 import { promises as fsPromises } from "fs";
 import * as fse from "fs-extra";
+import rimraf from "rimraf";
+
+export enum FileType {
+    File,
+    Directory,
+    Other,
+    Invalid,
+}
+
+export interface SimpleFile {
+    type?: FileType;
+    path: string;
+}
 
 export class FileUtils {
 
@@ -47,16 +60,23 @@ export class FileUtils {
     }
 
     public static async delete(path: string): Promise<boolean> {
-        try {
-            if (await this.isDirectory(path)) {
-                await fsPromises.rmdir(path);
-            } else if (await this.isFile(path)) {
-                await fsPromises.unlink(path);
+        return new Promise<boolean>(async (resolve, reject): Promise<void> => {
+            try {
+                if (await this.isDirectory(path)) {
+                    rimraf(path, (err) => {
+                        if (err) {
+                            return reject(false);
+                        }
+                        return resolve(true);
+                    });
+                } else if (await this.isFile(path)) {
+                    await fsPromises.unlink(path);
+                    return resolve(true);
+                }
+            } catch (error) {
+                return reject(false);
             }
-            return true;
-        } catch (error) {
-            return false;
-        }
+        });
     }
 
     public static async writeJSON(path: string, content: any, replacer?: ((this: any, key: string, value: any) => any) | undefined): Promise<boolean> {
@@ -86,4 +106,21 @@ export class FileUtils {
             return false;
         }
     }
+
+    public static async list(path: string): Promise<SimpleFile[]> {
+        try {
+            const result: SimpleFile[] = [];
+            const files = await fse.readdir(path);
+            for (const file of files) {
+                result.push({
+                    path: file,
+                    type: this.isFile(file) ? FileType.File : this.isDirectory(file) ? FileType.Directory : FileType.Other,
+                });
+            }
+            return result;
+        } catch (error) {
+            return [];
+        }
+    }
+
 }

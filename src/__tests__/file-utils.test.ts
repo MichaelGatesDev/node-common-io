@@ -58,3 +58,11 @@ test("should delete the json file", async () => {
     const delRes: boolean = await FileUtils.delete(jsonPath);
     expect(delRes).toBe(true);
 });
+
+test("should check the size of a directory", async () => {
+    await FileUtils.createDirectory(dirPath);
+    await FileUtils.writeJSON(`${dirPath}/temp.json`, { name: "bob", age: 21 });
+    const listRes = await FileUtils.list(dirPath);
+    await FileUtils.delete(dirPath);
+    expect(listRes.length).toBe(1);
+});
