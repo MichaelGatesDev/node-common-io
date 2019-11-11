@@ -15,20 +15,36 @@ export class WebDownloader {
         const stream = fs.createWriteStream(temporaryDestination);
 
         return new Promise((resolve, reject): void => {
-            const request = https.get(this.url, (response): void => {
-                const writeStream = response.pipe(stream);
-                writeStream.on("finish", async (): Promise<void> => {
-                    try {
-                        await fs.promises.rename(temporaryDestination, this.destination);
-                        return resolve();
-                    } catch (error) {
-                        return reject(new Error(`Failed to rename downloaded file ${temporaryDestination} => ${this.destination}`));
-                    }
-                });
+            const request = https.get(this.url, (res): void => {
+                // redirected
+                if (res.statusCode !== undefined && res.statusCode > 300 && res.statusCode < 400 && res.headers.location) {
+                    https.get(res.headers.location, (redirectRes) => {
+                        const writeStream = redirectRes.pipe(stream);
+                        writeStream.on("finish", async (): Promise<void> => {
+                            try {
+                                await fs.promises.rename(temporaryDestination, this.destination);
+                                return resolve();
+                            } catch (error) {
+                                return reject(new Error(`Failed to rename downloaded file ${temporaryDestination} => ${this.destination}`));
+                            }
+                        });
+                    });
+                } else {
+                    const writeStream = res.pipe(stream);
+                    writeStream.on("finish", async (): Promise<void> => {
+                        try {
+                            await fs.promises.rename(temporaryDestination, this.destination);
+                            return resolve();
+                        } catch (error) {
+                            return reject(new Error(`Failed to rename downloaded file ${temporaryDestination} => ${this.destination}`));
+                        }
+                    });
+                }
             });
             request.on("error", (err): void => {
                 return reject(err);
             });
         });
     }
+
 }
