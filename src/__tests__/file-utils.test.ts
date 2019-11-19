@@ -48,9 +48,13 @@ test("should copy the json file", async () => {
     const copyRes: boolean = await FileUtils.copy(jsonPath, `${jsonPath}.copy`);
     expect(copyRes).toBe(true);
 });
+test("should rename the copied json file", async () => {
+    const renameRes: boolean = await FileUtils.rename(`${jsonPath}.copy`, `${jsonPath}.copy.renamed`);
+    expect(renameRes).toBe(true);
+});
 test("should delete the copied json file", async () => {
     // delete json
-    const delRes: boolean = await FileUtils.delete(`${jsonPath}.copy`);
+    const delRes: boolean = await FileUtils.delete(`${jsonPath}.copy.renamed`);
     expect(delRes).toBe(true);
 });
 test("should delete the json file", async () => {

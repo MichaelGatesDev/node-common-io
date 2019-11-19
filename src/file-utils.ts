@@ -123,4 +123,13 @@ export class FileUtils {
         }
     }
 
+    public static async rename(oldPath: string, newPath: string): Promise<boolean> {
+        try {
+            await fsPromises.rename(oldPath, newPath);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
 }
