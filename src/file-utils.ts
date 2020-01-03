@@ -1,6 +1,7 @@
 import { promises as fsPromises } from "fs";
 import * as fse from "fs-extra";
 import rimraf from "rimraf";
+import path from "path";
 
 export enum FileType {
     File,
@@ -16,15 +17,10 @@ export interface SimpleFile {
 
 export class FileUtils {
 
-    public static async createDirectory(path: string, recursive?: boolean): Promise<boolean> {
+    public static async createDirectory(path: string, recursive?: boolean): Promise<void> {
         const exists: boolean = await this.checkExists(path);
-        if (exists) { return false; }
-        try {
-            await fsPromises.mkdir(path, { recursive });
-            return true;
-        } catch (error) {
-            return false;
-        }
+        if (exists) { throw new Error(`A directory at that path already exists (${path})`); }
+        await fsPromises.mkdir(path, { recursive });
     }
 
     public static async checkExists(path: string): Promise<boolean> {
@@ -59,19 +55,19 @@ export class FileUtils {
         }
     }
 
-    public static async delete(path: string): Promise<boolean> {
-        return new Promise<boolean>(async (resolve, reject): Promise<void> => {
+    public static async delete(path: string): Promise<void> {
+        return new Promise<void>(async (resolve, reject): Promise<void> => {
             try {
                 if (await this.isDirectory(path)) {
                     rimraf(path, (err) => {
                         if (err) {
                             return reject(false);
                         }
-                        return resolve(true);
+                        return resolve();
                     });
                 } else if (await this.isFile(path)) {
                     await fsPromises.unlink(path);
-                    return resolve(true);
+                    return resolve();
                 }
             } catch (error) {
                 return reject(false);
@@ -79,13 +75,8 @@ export class FileUtils {
         });
     }
 
-    public static async writeJSON(path: string, content: any, replacer?: ((this: any, key: string, value: any) => any) | undefined): Promise<boolean> {
-        try {
-            await fsPromises.writeFile(path, JSON.stringify(content, replacer, 4));
-            return true;
-        } catch (error) {
-            return false;
-        }
+    public static async writeJSON(path: string, content: any, replacer?: ((this: any, key: string, value: any) => any) | undefined): Promise<void> {
+        await fsPromises.writeFile(path, JSON.stringify(content, replacer, 4));
     }
 
     public static async readJSON<T>(path: string): Promise<T | undefined> {
@@ -98,13 +89,8 @@ export class FileUtils {
         }
     }
 
-    public static async copy(path: string, destination: string): Promise<boolean> {
-        try {
-            await fse.copy(path, destination);
-            return true;
-        } catch (error) {
-            return false;
-        }
+    public static async copy(path: string, destination: string): Promise<void> {
+        await fse.copy(path, destination);
     }
 
     public static async list(path: string): Promise<SimpleFile[]> {
@@ -123,13 +109,29 @@ export class FileUtils {
         }
     }
 
-    public static async rename(oldPath: string, newPath: string): Promise<boolean> {
-        try {
-            await fsPromises.rename(oldPath, newPath);
-            return true;
-        } catch (error) {
-            return false;
-        }
+    public static async rename(oldPath: string, newPath: string): Promise<void> {
+        await fsPromises.rename(oldPath, newPath);
     }
 
+    public static async findInDirectory(dir: string, filter: RegExp, fileList: string[] = []): Promise<string[]> {
+        try {
+            const files = await fsPromises.readdir(dir);
+
+            for (const file of files) {
+                const filePath = path.join(dir, file);
+
+                const fileStat = await fsPromises.lstat(filePath);
+
+                if (fileStat.isDirectory()) {
+                    FileUtils.findInDirectory(filePath, filter, fileList);
+                } else if (filter.test(filePath)) {
+                    fileList.push(filePath);
+                }
+            }
+
+            return fileList;
+        } catch (error) {
+            return [];
+        }
+    }
 }
