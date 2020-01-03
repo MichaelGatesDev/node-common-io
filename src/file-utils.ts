@@ -123,7 +123,7 @@ export class FileUtils {
                 const fileStat = await fsPromises.lstat(filePath);
 
                 if (fileStat.isDirectory()) {
-                    FileUtils.findInDirectory(filePath, filter, fileList);
+                    await FileUtils.findInDirectory(filePath, filter, fileList);
                 } else if (filter.test(filePath)) {
                     fileList.push(filePath);
                 }
